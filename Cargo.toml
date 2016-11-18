@@ -1,7 +1,14 @@
 [package]
 authors = ["Edward Yang <edward.yang6771@gmail.com>"]
-name = "physics-server"
+name = "trie-server"
 version = "0.1.0"
+build = "build.rs"
 
 [dependencies]
-tokio-core = "0.1.0"
+hyper = "0.9.12"
+lazy_static = "0.2.2"
+rand = "0.3.14"
+time = "0.1.35"
+
+[build-dependencies]
+rand = "0.3.14"
