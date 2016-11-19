@@ -3,7 +3,7 @@ use rand::{self, Rng};
 const MAX_LENGTH: usize = 20;
 
 lazy_static! {
-    static ref DICTIONARY_WORDS: Vec<&'static str> = {
+    pub static ref DICTIONARY_WORDS: Vec<&'static str> = {
         let mut v: Vec<&'static str> = include_str!(concat!(env!("OUT_DIR"), "/dictionary.txt"))
             .lines()
             .map(|s| s.trim())
@@ -12,7 +12,7 @@ lazy_static! {
         v
     };
 
-    static ref USABLE_CHARS: Vec<char> = {
+    pub static ref USABLE_CHARS: Vec<char> = {
         let mut chars_to_use = (0..26).map(|c| (c + 'a' as u8) as char).collect::<Vec<_>>();
         for c in 0..9 {
             chars_to_use.push(::std::char::from_digit(c, 10).unwrap());

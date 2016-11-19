@@ -44,6 +44,7 @@ fn main() {
         for _ in 0..DICTIONARY_UNREDUCED_SIZE {
             words.push(generate_random_string(&mut rng, &chars_to_use));
         }
+        words.sort();
         words.dedup();
         for word in words.into_iter().take(DICTIONARY_SIZE) {
             f.write((word + "\n").as_bytes())

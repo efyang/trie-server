@@ -5,6 +5,7 @@ extern crate rand;
 extern crate lazy_static;
 
 mod challenge;
+use challenge::{DICTIONARY_WORDS, USABLE_CHARS};
 
 use hyper::server::{Server, Handler, Request, Response};
 use hyper::method::Method;
@@ -17,8 +18,9 @@ use std::sync::{Arc, Mutex};
 use rand::{thread_rng, ThreadRng};
 use challenge::Challenge;
 
-const CHALLENGES_NEEDED: usize = 500;
-const MAX_TIME_INTERVAL: f64 = 0.0001;
+const CHALLENGES_NEEDED: usize = 100000;
+const MAX_TIME_INTERVAL: f64 = 0.01;
+const FLAG: &'static str = "1_tri3d_s0_hard_and_g0t_so_f4r";
 
 struct UserInfo {
     challenges_completed: usize,
@@ -61,7 +63,13 @@ struct ChallengeServer {
 
 impl Handler for ChallengeServer {
     fn handle(&self, mut request: Request, response: Response) {
-        let mut users = self.current_users.lock().unwrap();
+        let mut users = match self.current_users.lock() {
+            Ok(l) => l,
+            Err(e) => {
+                println!("{:?}", e);
+                return;
+            }
+        };
         let user_addr = request.remote_addr;
         let user_exists = users.contains_key(&user_addr);
         if user_exists && request.method == Method::Post {
@@ -70,11 +78,24 @@ impl Handler for ChallengeServer {
                     if correct {
                         if users[&user_addr].challenges_completed() + 1 > CHALLENGES_NEEDED {
                             // they've finished, send the flag
+                            users.remove(&user_addr);
+                            send_response(response, &format!("flag{{{}}}", FLAG));
                         } else {
-                            let challenge = RNG.with(|rng| Challenge::generate(&mut *rng.borrow_mut()));
-                            users.get_mut(&user_addr).unwrap().update_after_correct(&challenge);
+                            let challenge =
+                                RNG.with(|rng| Challenge::generate(&mut *rng.borrow_mut()));
+                            match users.get_mut(&user_addr) {
+                                    Some(u) => u,
+                                    None => {
+                                        println!("No user found");
+                                        return;
+                                    }
+                                }
+                                .update_after_correct(&challenge);
                             // send back the next question
-                            send_response(response, &format!("Check if the following word is in the dictionary: {}\n", challenge.question));
+                            send_response(response,
+                                          &format!("Check if the following word is in the \
+                                                    dictionary: {}\n",
+                                                   challenge.question));
                         }
                     } else {
                         users.remove(&user_addr);
@@ -92,13 +113,17 @@ impl Handler for ChallengeServer {
             // new challenger: add them to users and set them up
             let challenge = RNG.with(|rng| Challenge::generate(&mut *rng.borrow_mut()));
             users.insert(user_addr, UserInfo::new(challenge.answer));
-            send_response(response, &format!("Check if the following word is in the dictionary: {}\n", challenge.question));
+            send_response(response,
+                          &format!("Check if the following word is in the dictionary: {}\n",
+                                   challenge.question));
         }
     }
 }
 
 fn send_response(response: Response, message: &str) {
-    response.send(message.as_bytes()).unwrap();
+    if let Err(e) = response.send(message.as_bytes()) {
+        println!("{:?}", e);
+    }
 }
 
 // return if user got correct or not
@@ -117,9 +142,9 @@ fn parse_request(request: &mut Request) -> Option<bool> {
         return None;
     }
     rstr = rstr.trim().to_lowercase();
-    if &rstr == "true" {
+    if &rstr == "true" || &rstr == "yes" {
         Some(true)
-    } else if &rstr == "false" {
+    } else if &rstr == "false" || &rstr == "no" {
         Some(false)
     } else {
         None
@@ -128,13 +153,15 @@ fn parse_request(request: &mut Request) -> Option<bool> {
 
 impl ChallengeServer {
     fn new() -> ChallengeServer {
-        ChallengeServer {
-            current_users: Arc::new(Mutex::new(HashMap::new())),
-        }
+        ChallengeServer { current_users: Arc::new(Mutex::new(HashMap::new())) }
     }
 }
 
 fn main() {
+    // purely to initialize
+    println!("Using {} words, {} chars.",
+             DICTIONARY_WORDS.len(),
+             USABLE_CHARS.len());
     let challenge_server = ChallengeServer::new();
     let listen = Server::http("0.0.0.0:3000").unwrap().handle(challenge_server).unwrap();
     println!("Challenge server running on {:?}", listen.socket);
