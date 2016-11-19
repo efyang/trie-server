@@ -19,7 +19,7 @@ use rand::{thread_rng, ThreadRng};
 use challenge::Challenge;
 
 const CHALLENGES_NEEDED: usize = 100000;
-const MAX_TIME_INTERVAL: f64 = 0.01;
+const MAX_TIME_INTERVAL: f64 = 0.5;
 const FLAG: &'static str = "1_tri3d_s0_hard_and_g0t_so_f4r";
 
 struct UserInfo {
@@ -94,19 +94,19 @@ impl Handler for ChallengeServer {
                             // send back the next question
                             send_response(response,
                                           &format!("Check if the following word is in the \
-                                                    dictionary: {}\n",
+                                                    dictionary: {}",
                                                    challenge.question));
                         }
                     } else {
                         users.remove(&user_addr);
                         // tell user that they got it wrong
-                        send_response(response, "Your response was incorrect\n");;
+                        send_response(response, "Your response was incorrect");;
                     }
                 }
                 None => {
                     // tell user that their reponse failed in some way so got it wrong
                     users.remove(&user_addr);
-                    send_response(response, "Your response failed in some way\n");
+                    send_response(response, "Your response failed in some way");
                 }
             }
         } else if !user_exists && request.method == Method::Get {
@@ -114,7 +114,7 @@ impl Handler for ChallengeServer {
             let challenge = RNG.with(|rng| Challenge::generate(&mut *rng.borrow_mut()));
             users.insert(user_addr, UserInfo::new(challenge.answer));
             send_response(response,
-                          &format!("Check if the following word is in the dictionary: {}\n",
+                          &format!("Check if the following word is in the dictionary: {}",
                                    challenge.question));
         }
     }
